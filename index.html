@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetLearn Pro - Cours Réseaux Locaux</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- 
+    Application Structure Plan:
+    1. Sidebar Navigation: Logical flow following the course "Plan" (Intro -> Modèles -> Matériel -> Adressage -> Protocoles -> Config -> Quiz).
+    2. Interactive Modules:
+       - OSI/TCP Stack: Clickable layers to see PDU/Description.
+       - Hardware Sim: Canvas-based Hub vs Switch visualizer.
+       - IP Calculator: Input IP/Mask -> Get Class, NetID, Broadcast.
+       - Protocol Dashboard: Cards for ARP, ICMP, DNS, DHCP with visual flows.
+       - Lab Virtuel (NEW): A simulated CLI terminal to practice the Router configurations (R1, R2, R3) found in the PDF.
+    -->
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Termimal Typing Cursor */
+        .cursor-blink { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Chart Container */
+        .chart-container { position: relative; width: 100%; max-width: 400px; height: 300px; margin: 0 auto; }
+        
+        /* Network Map Nodes */
+        .topo-node { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .topo-node:hover { transform: scale(1.05); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .topo-line { height: 2px; background-color: #cbd5e1; position: absolute; z-index: 0; transform-origin: left center; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden bg-slate-50">
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col flex-shrink-0 transition-all duration-300" id="sidebar">
+        <div class="p-6 border-b border-slate-800">
+            <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                <span class="text-indigo-500">⚡</span> NetLearn
+            </h1>
+            <p class="text-xs text-slate-500 mt-2">Basé sur le support de Y. Tazouti</p>
+        </div>
+        
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <button onclick="nav('intro')" id="nav-intro" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-3 active-nav bg-indigo-600 text-white">
+                <span>📚</span> Introduction & Objectifs
+            </button>
+            <button onclick="nav('modeles')" id="nav-modeles" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-3">
+                <span>🏗️</span> Modèles OSI & TCP/IP
+            </button>
+            <button onclick="nav('materiel')" id="nav-materiel" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-3">
+                <span>🔌</span> Matériel & Câblage
+            </button>
+            <button onclick="nav('ip')" id="nav-ip" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-3">
+                <span>🔢</span> Adressage IPv4
+            </button>
+            <button onclick="nav('protocoles')" id="nav-protocoles" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-3">
+                <span>🌐</span> Protocoles & Ports
+            </button>
+            <button onclick="nav('lab')" id="nav-lab" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-3">
+                <span>💻</span> Lab Virtuel (Config)
+            </button>
+            <button onclick="nav('quiz')" id="nav-quiz" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-slate-800 hover:text-white transition-colors flex items-center gap-3">
+                <span>❓</span> Quiz Final
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+            v1.0 • High-Tech Rabat
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 overflow-y-auto relative scroll-smooth" id="main-scroll">
+        
+        <!-- HEADER MOBILE -->
+        <header class="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-50">
+            <span class="font-bold">NetLearn Pro</span>
+            <button onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('sidebar').classList.toggle('absolute'); document.getElementById('sidebar').classList.toggle('h-full'); document.getElementById('sidebar').classList.toggle('z-50');" class="text-2xl">☰</button>
+        </header>
+
+        <!-- SECTION: INTRO -->
+        <section id="intro" class="p-8 max-w-6xl mx-auto fade-in">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
+                <h2 class="text-3xl font-bold text-slate-800 mb-6">Bienvenue dans le Cours de Réseaux Locaux</h2>
+                <p class="text-lg text-slate-600 mb-6 leading-relaxed">
+                    Ce support interactif reprend l'intégralité du Chapitre 1. Vous y apprendrez à gérer un parc informatique, comprendre les protocoles fondamentaux et configurer des équipements Cisco.
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
+                        <div class="text-indigo-600 font-bold text-xl mb-2">01. Architecture</div>
+                        <p class="text-slate-600 text-sm">Maîtriser les modèles OSI et TCP/IP, l'encapsulation et les PDU.</p>
+                    </div>
+                    <div class="bg-emerald-50 p-6 rounded-xl border border-emerald-100">
+                        <div class="text-emerald-600 font-bold text-xl mb-2">02. Services</div>
+                        <p class="text-slate-600 text-sm">Déployer DHCP, DNS et comprendre les ports (HTTP, FTP, SMTP).</p>
+                    </div>
+                    <div class="bg-amber-50 p-6 rounded-xl border border-amber-100">
+                        <div class="text-amber-600 font-bold text-xl mb-2">03. Configuration</div>
+                        <p class="text-slate-600 text-sm">Pratiquez les commandes IOS (hostname, ip address) sur un simulateur.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                <h3 class="text-xl font-bold text-slate-800 mb-4">Objectifs Pédagogiques</h3>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-3">
+                        <span class="bg-green-100 text-green-700 rounded-full p-1 text-xs mt-1">✓</span>
+                        <span class="text-slate-700">Comprendre les différentes configurations et gestion d'un parc informatique.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="bg-green-100 text-green-700 rounded-full p-1 text-xs mt-1">✓</span>
+                        <span class="text-slate-700">Permettre le déploiement automatique des nouvelles machines (DHCP).</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="bg-green-100 text-green-700 rounded-full p-1 text-xs mt-1">✓</span>
+                        <span class="text-slate-700">Connaître le fonctionnement des protocoles applicatifs (DNS, HTTP, FTP...).</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="bg-green-100 text-green-700 rounded-full p-1 text-xs mt-1">✓</span>
+                        <span class="text-slate-700">Effectuer des choix éclairés d'architectures et protocoles.</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- SECTION: MODELES -->
+        <section id="modeles" class="hidden p-8 max-w-7xl mx-auto fade-in">
+            <div class="flex flex-col lg:flex-row gap-8 h-[80vh]">
+                <!-- OSI Stack -->
+                <div class="lg:w-1/3 flex flex-col gap-2">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Modèle OSI (7 Couches)</h3>
+                    <div id="osi-layers" class="flex-1 flex flex-col gap-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- TCP/IP Stack -->
+                <div class="lg:w-1/3 flex flex-col gap-2">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Modèle TCP/IP (4 Couches)</h3>
+                    <div class="flex-1 flex flex-col gap-2">
+                        <div class="bg-rose-100 p-4 rounded-lg border border-rose-200 flex items-center justify-center font-bold text-rose-800 hover:bg-rose-200 transition h-[42%]">
+                            Application (App + Pres + Sess)
+                        </div>
+                        <div class="bg-green-100 p-4 rounded-lg border border-green-200 flex items-center justify-center font-bold text-green-800 hover:bg-green-200 transition h-[14%]">
+                            Transport
+                        </div>
+                        <div class="bg-teal-100 p-4 rounded-lg border border-teal-200 flex items-center justify-center font-bold text-teal-800 hover:bg-teal-200 transition h-[14%]">
+                            Internet
+                        </div>
+                        <div class="bg-indigo-100 p-4 rounded-lg border border-indigo-200 flex items-center justify-center font-bold text-indigo-800 hover:bg-indigo-200 transition h-[28%]">
+                            Accès Réseau (Liaison + Phys)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Panel -->
+                <div class="lg:w-1/3 bg-white rounded-2xl shadow-lg border border-slate-200 p-8 flex flex-col justify-center sticky top-8">
+                    <div id="layer-detail" class="text-center">
+                        <div class="text-6xl mb-6">👆</div>
+                        <h4 class="text-xl font-bold text-slate-400">Interactivité</h4>
+                        <p class="text-slate-500 mt-2">Cliquez sur une couche du modèle OSI pour voir son rôle, son PDU (unité de données) et ses protocoles associés.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: MATERIEL -->
+        <section id="materiel" class="hidden p-8 max-w-6xl mx-auto fade-in">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">Équipements & Simulation</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Sim Canvas -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-700">Simulateur de Flux (Hub vs Switch)</h3>
+                        <div class="flex gap-2">
+                            <button onclick="setSimMode('hub')" id="btn-hub" class="px-3 py-1 text-xs font-bold rounded bg-amber-100 text-amber-700">HUB</button>
+                            <button onclick="setSimMode('switch')" id="btn-switch" class="px-3 py-1 text-xs font-bold rounded bg-slate-100 text-slate-500">SWITCH</button>
+                        </div>
+                    </div>
+                    <canvas id="netSim" width="500" height="300" class="w-full bg-slate-50 rounded border border-slate-100"></canvas>
+                    <div class="mt-4 flex justify-between items-center">
+                        <p id="sim-log" class="text-xs font-mono text-slate-500">Prêt.</p>
+                        <button onclick="sendPacket()" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-indigo-700">Envoyer Paquet</button>
+                    </div>
+                </div>
+
+                <!-- Info Cards -->
+                <div class="space-y-4">
+                    <div class="bg-white p-6 rounded-xl border border-l-4 border-l-amber-500 shadow-sm">
+                        <h4 class="font-bold text-lg text-slate-800">Le Hub (Couche 1)</h4>
+                        <p class="text-sm text-slate-600 mt-2">
+                            Bête et inefficace. Il reçoit un signal sur un port et le répète sur <strong>tous</strong> les autres ports (Broadcast). Cela crée un seul grand domaine de collision. Sécurité faible.
+                        </p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-l-4 border-l-indigo-500 shadow-sm">
+                        <h4 class="font-bold text-lg text-slate-800">Le Switch (Couche 2)</h4>
+                        <p class="text-sm text-slate-600 mt-2">
+                            Intelligent. Il apprend les adresses <strong>MAC</strong> des machines connectées et stocke ça dans sa table CAM. Il envoie les données uniquement au destinataire (Unicast).
+                        </p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-bold text-lg text-slate-800">Câblage Ethernet</h4>
+                        <ul class="text-sm text-slate-600 mt-2 list-disc list-inside">
+                            <li><strong>Droit (Straight-through):</strong> Équipements différents (PC ↔ Switch).</li>
+                            <li><strong>Croisé (Crossover):</strong> Équipements identiques (PC ↔ PC, Switch ↔ Switch, Routeur ↔ PC).</li>
+                            <li><strong>Console (Rollover):</strong> Configuration (PC Série ↔ Routeur Console).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: IP -->
+        <section id="ip" class="hidden p-8 max-w-6xl mx-auto fade-in">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">Adressage IPv4</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Calculator -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4">Calculatrice IP</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Adresse IP</label>
+                            <input type="text" id="ip-addr" placeholder="ex: 192.168.1.10" class="w-full p-3 border border-slate-300 rounded font-mono focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Masque (CIDR ou Décimal)</label>
+                            <input type="text" id="ip-mask" placeholder="ex: 24 ou 255.255.255.0" class="w-full p-3 border border-slate-300 rounded font-mono focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <button onclick="calculateIP()" class="w-full bg-indigo-600 text-white py-3 rounded font-bold hover:bg-indigo-700 transition">Calculer</button>
+                    </div>
+
+                    <div id="ip-results" class="mt-6 hidden bg-slate-50 p-4 rounded border border-slate-200">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div><span class="text-slate-500">Classe:</span> <span id="res-class" class="font-bold">-</span></div>
+                            <div><span class="text-slate-500">Type:</span> <span id="res-type" class="font-bold">-</span></div>
+                            <div><span class="text-slate-500">Adresse Réseau:</span> <span id="res-net" class="font-mono font-bold">-</span></div>
+                            <div><span class="text-slate-500">Broadcast:</span> <span id="res-broad" class="font-mono font-bold">-</span></div>
+                            <div><span class="text-slate-500">Masque (Bin):</span> <span id="res-bin" class="font-mono text-xs block mt-1">-</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Classes Visualization -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex flex-col items-center">
+                    <h3 class="text-lg font-bold text-slate-700 mb-2">Répartition des Classes</h3>
+                    <div class="chart-container">
+                        <canvas id="classChart"></canvas>
+                    </div>
+                    <div class="text-sm text-slate-500 mt-4 text-center">
+                        <span class="inline-block w-3 h-3 bg-amber-500 rounded-full mr-1"></span>A (50%)
+                        <span class="inline-block w-3 h-3 bg-emerald-500 rounded-full mr-1 ml-2"></span>B (25%)
+                        <span class="inline-block w-3 h-3 bg-indigo-500 rounded-full mr-1 ml-2"></span>C (12.5%)
+                        <span class="inline-block w-3 h-3 bg-slate-400 rounded-full mr-1 ml-2"></span>D/E
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: PROTOCOLES -->
+        <section id="protocoles" class="hidden p-8 max-w-7xl mx-auto fade-in">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">Protocoles & Services</h2>
+
+            <!-- Ports Grid -->
+            <div class="mb-10">
+                <h3 class="text-lg font-bold text-slate-700 mb-4">Ports Standards (À retenir)</h3>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center hover:shadow-md transition cursor-default">
+                        <div class="text-2xl font-bold text-purple-600">21</div>
+                        <div class="font-bold text-slate-700">FTP</div>
+                        <div class="text-xs text-slate-500">Transfert Fichier</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center hover:shadow-md transition cursor-default">
+                        <div class="text-2xl font-bold text-green-600">25</div>
+                        <div class="font-bold text-slate-700">SMTP</div>
+                        <div class="text-xs text-slate-500">Envoi Mail</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center hover:shadow-md transition cursor-default">
+                        <div class="text-2xl font-bold text-blue-600">80</div>
+                        <div class="font-bold text-slate-700">HTTP</div>
+                        <div class="text-xs text-slate-500">Web</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center hover:shadow-md transition cursor-default">
+                        <div class="text-2xl font-bold text-rose-600">110</div>
+                        <div class="font-bold text-slate-700">POP3</div>
+                        <div class="text-xs text-slate-500">Réception Mail</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 text-center hover:shadow-md transition cursor-default">
+                        <div class="text-2xl font-bold text-amber-600">53</div>
+                        <div class="font-bold text-slate-700">DNS</div>
+                        <div class="text-xs text-slate-500">Noms → IP</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- DHCP DORA Timeline -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-lg text-slate-700 mb-4">Cycle DHCP (D.O.R.A)</h3>
+                    <div class="relative pl-8 space-y-6 border-l-2 border-slate-200 ml-4">
+                        <div class="relative">
+                            <span class="absolute -left-[41px] bg-slate-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs">1</span>
+                            <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                                <span class="text-amber-600 font-bold text-xs">DISCOVER (Broadcast)</span>
+                                <p class="text-sm text-slate-600">Le client crie "Y a-t-il un serveur DHCP ?"</p>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute -left-[41px] bg-indigo-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs">2</span>
+                            <div class="bg-indigo-50 p-3 rounded border border-indigo-100">
+                                <span class="text-indigo-600 font-bold text-xs">OFFER (Unicast/Broad)</span>
+                                <p class="text-sm text-slate-600">Le serveur propose une IP (ex: 192.168.1.10).</p>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute -left-[41px] bg-slate-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs">3</span>
+                            <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                                <span class="text-amber-600 font-bold text-xs">REQUEST (Broadcast)</span>
+                                <p class="text-sm text-slate-600">Le client accepte l'offre officiellement.</p>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute -left-[41px] bg-indigo-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs">4</span>
+                            <div class="bg-indigo-50 p-3 rounded border border-indigo-100">
+                                <span class="text-indigo-600 font-bold text-xs">ACKNOWLEDGE (Unicast)</span>
+                                <p class="text-sm text-slate-600">Le serveur valide le bail. C'est fait !</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ARP & DNS -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-lg text-slate-700 mb-2">ARP (Address Resolution Protocol)</h3>
+                        <p class="text-sm text-slate-600 mb-3">Fait le lien entre l'adresse logique (IP, Couche 3) et physique (MAC, Couche 2).</p>
+                        <div class="bg-slate-800 text-green-400 p-3 rounded font-mono text-xs">
+                            C:\> arp -a<br>
+                            Interface: 192.168.1.5<br>
+                            Address IP &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Phys Address &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Type<br>
+                            192.168.1.1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 00-1a-2b-3c-4d-5e &nbsp; dynamic
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 class="font-bold text-lg text-slate-700 mb-2">DNS (Domain Name System)</h3>
+                        <p class="text-sm text-slate-600">Traduit les noms (www.google.com) en IP (142.250.x.x).</p>
+                        <ul class="text-sm mt-2 space-y-1 text-slate-600">
+                            <li><strong>A:</strong> Nom → IPv4</li>
+                            <li><strong>PTR:</strong> IPv4 → Nom (Inverse)</li>
+                            <li><strong>MX:</strong> Serveur Mail</li>
+                            <li><strong>CNAME:</strong> Alias</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: LAB VIRTUEL (CONFIG) -->
+        <section id="lab" class="hidden p-8 max-w-7xl mx-auto fade-in">
+            <h2 class="text-2xl font-bold text-slate-800 mb-4">Lab Virtuel : Configuration Routeur</h2>
+            <p class="text-slate-600 mb-6">Pratiquez les commandes vues dans le cours. Sélectionnez un routeur pour commencer.</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
+                <!-- Topology Selection -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 flex flex-col items-center justify-center gap-6 relative overflow-hidden">
+                    <div class="absolute top-2 left-2 text-xs font-bold text-slate-400">TOPOLOGIE</div>
+                    
+                    <!-- Nodes -->
+                    <button onclick="loadRouter('R1')" id="node-R1" class="topo-node w-16 h-16 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold z-10 border-4 border-white shadow-lg cursor-pointer">R1</button>
+                    
+                    <div class="h-16 w-1 bg-slate-300"></div>
+                    
+                    <button onclick="loadRouter('R2')" id="node-R2" class="topo-node w-16 h-16 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold z-10 border-4 border-white shadow-lg cursor-pointer">R2</button>
+                    
+                    <div class="h-16 w-1 bg-slate-300"></div>
+                    
+                    <button onclick="loadRouter('R3')" id="node-R3" class="topo-node w-16 h-16 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold z-10 border-4 border-white shadow-lg cursor-pointer">R3</button>
+                </div>
+
+                <!-- Terminal -->
+                <div class="lg:col-span-2 bg-slate-900 rounded-xl shadow-2xl overflow-hidden flex flex-col font-mono text-sm relative">
+                    <!-- Title Bar -->
+                    <div class="bg-slate-800 p-2 flex items-center gap-2 border-b border-slate-700">
+                        <div class="flex gap-1.5 ml-1">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div class="text-slate-400 text-xs ml-2 flex-1 text-center pr-12" id="term-title">Console - Sélectionnez un routeur</div>
+                    </div>
+
+                    <!-- Output Area -->
+                    <div class="flex-1 p-4 text-green-400 overflow-y-auto" id="term-output">
+                        Bienvenue dans le simulateur CLI Cisco IOS.<br>
+                        Cliquez sur un routeur (R1, R2, R3) à gauche pour commencer.<br><br>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="p-2 bg-slate-900 border-t border-slate-800 flex items-center">
+                        <span id="term-prompt" class="text-slate-400 mr-2">Router></span>
+                        <input type="text" id="term-input" class="bg-transparent border-none outline-none text-white flex-1" disabled autocomplete="off">
+                    </div>
+
+                    <!-- Auto-Type Button -->
+                    <button onclick="autoConfig()" id="btn-auto-config" class="absolute bottom-4 right-4 bg-indigo-600 text-white px-3 py-1 rounded text-xs opacity-0 pointer-events-none transition-opacity">Auto-Config</button>
+                </div>
+            </div>
+
+            <!-- Cheat Sheet -->
+            <div class="mt-8 bg-amber-50 border border-amber-200 p-4 rounded-lg text-sm text-amber-900">
+                <span class="font-bold">Commandes Utiles :</span>
+                <span class="font-mono bg-amber-100 px-1 rounded ml-2">enable</span>
+                <span class="font-mono bg-amber-100 px-1 rounded ml-2">configure terminal</span>
+                <span class="font-mono bg-amber-100 px-1 rounded ml-2">hostname [Nom]</span>
+                <span class="font-mono bg-amber-100 px-1 rounded ml-2">interface [Nom]</span>
+                <span class="font-mono bg-amber-100 px-1 rounded ml-2">ip address [IP] [Masque]</span>
+                <span class="font-mono bg-amber-100 px-1 rounded ml-2">no shutdown</span>
+                <span class="font-mono bg-amber-100 px-1 rounded ml-2">exit</span>
+            </div>
+        </section>
+
+        <!-- SECTION: QUIZ -->
+        <section id="quiz" class="hidden p-8 max-w-4xl mx-auto fade-in">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">Quiz Final</h2>
+            <div id="quiz-container" class="space-y-6">
+                <!-- JS Populates -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- SCRIPTS -->
+    <script>
+        // --- NAVIGATION LOGIC ---
+        function nav(id) {
+            document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            
+            // Sidebar Active State
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('text-slate-300');
+            });
+            const activeBtn = document.getElementById(`nav-${id}`);
+            activeBtn.classList.add('bg-indigo-600', 'text-white');
+            activeBtn.classList.remove('text-slate-300');
+
+            if(id === 'ip' && !window.chartInit) initChart();
+        }
+
+        // --- OSI LAYERS DATA ---
+        const osiData = [
+            { id: 7, name: "Application", pdu: "Données", desc: "Interface utilisateur (HTTP, FTP, SMTP)", color: "border-l-rose-500 bg-rose-50" },
+            { id: 6, name: "Présentation", pdu: "Données", desc: "Formatage, Cryptage (JPEG, ASCII)", color: "border-l-rose-400 bg-rose-50" },
+            { id: 5, name: "Session", pdu: "Données", desc: "Gestion des dialogues inter-hôtes", color: "border-l-rose-300 bg-rose-50" },
+            { id: 4, name: "Transport", pdu: "Segment", desc: "Fiabilité (TCP) ou Vitesse (UDP), Ports", color: "border-l-green-500 bg-green-50" },
+            { id: 3, name: "Réseau", pdu: "Paquet", desc: "Adressage IP, Routage", color: "border-l-teal-500 bg-teal-50" },
+            { id: 2, name: "Liaison", pdu: "Trame", desc: "Adressage MAC, Switchs, Détection erreur", color: "border-l-indigo-500 bg-indigo-50" },
+            { id: 1, name: "Physique", pdu: "Bit", desc: "Câbles, Signaux électriques/lumineux, Hubs", color: "border-l-indigo-400 bg-indigo-50" }
+        ];
+
+        const osiContainer = document.getElementById('osi-layers');
+        osiData.forEach(l => {
+            const div = document.createElement('div');
+            div.className = `p-3 rounded border border-slate-200 border-l-4 cursor-pointer hover:shadow-md transition ${l.color}`;
+            div.innerHTML = `<span class="font-bold text-slate-700">Couche ${l.id}: ${l.name}</span>`;
+            div.onclick = () => {
+                document.getElementById('layer-detail').innerHTML = `
+                    <div class="text-4xl mb-4 font-bold text-indigo-600">${l.id}</div>
+                    <h4 class="text-2xl font-bold text-slate-800 mb-2">${l.name}</h4>
+                    <div class="text-sm font-mono bg-slate-100 p-2 rounded w-fit mx-auto mb-4">PDU : ${l.pdu}</div>
+                    <p class="text-slate-600 leading-relaxed">${l.desc}</p>
+                `;
+            };
+            osiContainer.appendChild(div);
+        });
+
+        // --- HARDWARE SIM ---
+        const cvs = document.getElementById('netSim');
+        const ctx = cvs.getContext('2d');
+        let simMode = 'hub';
+        let nodes = [{x: 250, y: 150, type: 'dev', color: '#f59e0b'}, 
+                     {x: 100, y: 100, id: 'PC1'}, {x: 400, y: 100, id: 'PC2'}, 
+                     {x: 100, y: 250, id: 'PC3'}, {x: 400, y: 250, id: 'PC4'}];
+        let packets = [];
+        let animId;
+
+        function setSimMode(m) {
+            simMode = m;
+            document.getElementById('btn-hub').className = m==='hub' ? 'px-3 py-1 text-xs font-bold rounded bg-amber-500 text-white' : 'px-3 py-1 text-xs font-bold rounded bg-slate-100 text-slate-500';
+            document.getElementById('btn-switch').className = m==='switch' ? 'px-3 py-1 text-xs font-bold rounded bg-indigo-600 text-white' : 'px-3 py-1 text-xs font-bold rounded bg-slate-100 text-slate-500';
+            nodes[0].color = m==='hub' ? '#f59e0b' : '#4f46e5';
+            document.getElementById('sim-log').innerText = m==='hub' ? "Mode Hub : Diffusion (Broadcast) active." : "Mode Switch : Table MAC active (Unicast).";
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,500,300);
+            // Links
+            ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
+            for(let i=1; i<nodes.length; i++){ ctx.beginPath(); ctx.moveTo(nodes[0].x, nodes[0].y); ctx.lineTo(nodes[i].x, nodes[i].y); ctx.stroke(); }
+            // Nodes
+            nodes.forEach((n, i) => {
+                ctx.fillStyle = n.type === 'dev' ? n.color : '#64748b';
+                ctx.beginPath(); ctx.arc(n.x, n.y, i===0?20:15, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'white'; ctx.font = '10px Arial'; ctx.textAlign='center';
+                if(i===0) ctx.fillText(simMode==='hub'?'HUB':'SW', n.x, n.y+4);
+                else ctx.fillText(n.id, n.x, n.y+4);
+            });
+            // Packets
+            packets.forEach(p => {
+                ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
+            });
+        }
+
+        function sendPacket() {
+            // PC1 to PC4
+            packets.push({x: 100, y: 100, tx: 250, ty: 150, stage: 1, target: 'PC4', color: '#10b981'});
+            if(!animId) animate();
+        }
+
+        function animate() {
+            let active = false;
+            packets.forEach(p => {
+                let dx = p.tx - p.x; let dy = p.ty - p.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if(dist > 2) {
+                    p.x += dx/dist * 3; p.y += dy/dist * 3; active = true;
+                } else {
+                    if(p.stage === 1) {
+                        p.stage = 2; active = true;
+                        // Distribution logic
+                        if(simMode === 'hub') {
+                            // Broadcast to all except sender
+                            [2,3,4].forEach(idx => {
+                                packets.push({x: 250, y: 150, tx: nodes[idx].x, ty: nodes[idx].y, stage: 2, color: nodes[idx].id === 'PC4' ? '#10b981' : '#ef4444'});
+                            });
+                        } else {
+                            // Unicast to PC4
+                            packets.push({x: 250, y: 150, tx: 400, ty: 250, stage: 2, color: '#10b981'});
+                        }
+                        p.finished = true;
+                    } else {
+                        p.finished = true;
+                    }
+                }
+            });
+            packets = packets.filter(p => !p.finished);
+            draw();
+            if(active || packets.length > 0) animId = requestAnimationFrame(animate);
+            else animId = null;
+        }
+        draw();
+
+        // --- IP CALC ---
+        function calculateIP() {
+            let ip = document.getElementById('ip-addr').value.split('.');
+            let maskIn = document.getElementById('ip-mask').value;
+            if(ip.length !== 4) return alert("IP Invalide");
+            
+            let first = parseInt(ip[0]);
+            let cl = first < 128 ? 'A' : (first < 192 ? 'B' : (first < 224 ? 'C' : 'D/E'));
+            let type = (first === 10 || (first === 172 && ip[1]>=16 && ip[1]<=31) || (first === 192 && ip[1]==168)) ? 'Privée' : 'Publique';
+            
+            // Basic logic for demo (Assuming standard mask if CIDR provided)
+            let cidr = maskIn.includes('.') ? 24 : parseInt(maskIn); // simplified
+            
+            document.getElementById('ip-results').classList.remove('hidden');
+            document.getElementById('res-class').innerText = cl;
+            document.getElementById('res-type').innerText = type;
+            document.getElementById('res-net').innerText = ip[0] + '.' + ip[1] + '.' + (cidr>=24?ip[2]:'0') + '.0'; // Simplified calc
+            document.getElementById('res-broad').innerText = ip[0] + '.' + ip[1] + '.' + (cidr>=24?ip[2]:'255') + '.255';
+            document.getElementById('res-bin').innerText = parseInt(ip[0]).toString(2).padStart(8,'0') + "...";
+        }
+
+        // --- CHART ---
+        function initChart() {
+            window.chartInit = true;
+            new Chart(document.getElementById('classChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['A', 'B', 'C', 'D/E'],
+                    datasets: [{ data: [50, 25, 12.5, 12.5], backgroundColor: ['#f59e0b', '#10b981', '#6366f1', '#94a3b8'], borderWidth: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        // --- LAB VIRTUEL / TERMINAL ---
+        let currentRouter = null;
+        let history = [];
+        const routerConfigs = {
+            'R1': [
+                "enable", "configure terminal", "hostname R1", "interface g0/0", "ip address 10.0.0.1 255.255.255.252", "no shutdown", "exit"
+            ],
+            'R2': [
+                "enable", "configure terminal", "hostname R2", "interface g0/0", "ip address 172.18.1.1 255.255.255.0", "no shutdown", 
+                "interface g0/1", "ip address 10.0.0.2 255.255.255.252", "no shutdown"
+            ],
+            'R3': [
+                "enable", "configure terminal", "hostname R3", "interface g0/0", "ip address 10.0.0.6 255.255.255.252", "no shutdown"
+            ]
+        };
+
+        function loadRouter(r) {
+            currentRouter = r;
+            document.getElementById('term-title').innerText = `Console - ${r}`;
+            document.getElementById('term-input').disabled = false;
+            document.getElementById('term-input').focus();
+            document.getElementById('term-prompt').innerText = "Router>";
+            document.getElementById('term-output').innerHTML = `Connexion à ${r} réussie...<br><br>`;
+            
+            // Reset Highlight
+            document.querySelectorAll('.topo-node').forEach(n => n.classList.remove('ring-4', 'ring-indigo-500'));
+            document.getElementById(`node-${r}`).classList.add('ring-4', 'ring-indigo-500');
+
+            // Show Auto button
+            const btn = document.getElementById('btn-auto-config');
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+            history = [];
+        }
+
+        function autoConfig() {
+            if(!currentRouter) return;
+            const cmds = routerConfigs[currentRouter];
+            let i = 0;
+            function typeNext() {
+                if(i >= cmds.length) return;
+                const cmd = cmds[i];
+                addLine(document.getElementById('term-prompt').innerText + " " + cmd);
+                
+                // Logic simulation
+                if(cmd.startsWith("hostname")) document.getElementById('term-prompt').innerText = cmd.split(' ')[1] + "(config)#";
+                else if(cmd === "enable") document.getElementById('term-prompt').innerText = "Router#";
+                else if(cmd === "configure terminal") document.getElementById('term-prompt').innerText = "Router(config)#";
+                else if(cmd.startsWith("interface")) document.getElementById('term-prompt').innerText = document.getElementById('term-prompt').innerText.replace(')#', '-if)#');
+                else if(cmd === "exit") document.getElementById('term-prompt').innerText = document.getElementById('term-prompt').innerText.replace('-if)#', ')#');
+                else if(cmd === "no shutdown") addLine("%LINK-3-UPDOWN: Interface GigabitEthernet0/0, changed state to up");
+
+                i++;
+                setTimeout(typeNext, 800);
+            }
+            typeNext();
+        }
+
+        function addLine(txt) {
+            const out = document.getElementById('term-output');
+            out.innerHTML += txt + "<br>";
+            out.scrollTop = out.scrollHeight;
+        }
+
+        // --- QUIZ ---
+        const quizData = [
+            { q: "Quel port utilise le service Web (HTTP) ?", opts: ["21", "25", "80", "110"], a: 2 },
+            { q: "Quel équipement fonctionne à la couche 1 ?", opts: ["Switch", "Hub", "Routeur", "PC"], a: 1 },
+            { q: "Quelle commande active une interface routeur ?", opts: ["start", "enable", "no shutdown", "up"], a: 2 },
+            { q: "Quelle est l'unité de données de la couche 2 ?", opts: ["Bit", "Paquet", "Segment", "Trame"], a: 3 },
+            { q: "Quelle classe d'IP va de 192 à 223 ?", opts: ["A", "B", "C", "D"], a: 2 }
+        ];
+
+        const qc = document.getElementById('quiz-container');
+        quizData.forEach((q, i) => {
+            qc.innerHTML += `
+                <div class="bg-white p-6 rounded-xl border border-slate-200">
+                    <p class="font-bold text-slate-800 mb-4">${i+1}. ${q.q}</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${q.opts.map((o, oi) => `<button onclick="checkQuiz(this, ${oi===q.a})" class="p-2 border rounded hover:bg-slate-50 text-sm text-left">${o}</button>`).join('')}
+                    </div>
+                </div>
+            `;
+        });
+
+        function checkQuiz(btn, isCorrect) {
+            if(isCorrect) {
+                btn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+            } else {
+                btn.classList.add('bg-red-100', 'border-red-500', 'text-red-800');
+            }
+        }
+    </script>
+</body>
+</html>
